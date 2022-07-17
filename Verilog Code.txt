@@ -1,0 +1,105 @@
+			I2C Slave to Read/write 8 bit of data  (verilog Code)
+
+1.	/**
+2.	I2C Slave to Read/Write 8 bits of data only
+3.	*/
+4.	
+5.	`timescale 1ns / 1ps
+6.	
+7.	Module Slave(
+8.		Inout wire SDA,
+9.	    Input wire SCL);
+10.	  
+11.	  Reg [4:0] IDLE 			= 4’b0000;
+12.	  Reg [4:0] START 			= 4’b0001;
+13.	  Reg [4:0] READ_ADDRESS 	= 4’b0010;
+14.	  Reg [4:0] READ_WRITE 		= 4’b0011;
+15.	  Reg [4:0] DATA 			= 4’b0100;
+16.	  Reg [4:0] DATA_ACK   		= 4’b0101;
+17.	  Reg [4:0] STOP 			= 4’b0110;
+18.	  Reg [4:0] ADDRESS_ACK 	= 4’b0111;
+19.	  
+20.	  Reg [4:0] state 			= 4’b0010;
+21.	  
+22.	  Reg [6:0] slaveAddress 	= 7’b000_1000;
+23.	  Reg [6:0] addr			= 7’b000_0000;
+24.	  Reg [6:0] addressCounter 	= 7’b000_0000;
+25.	  
+26.	  Reg [7:0] data			= 8’b0000_0000;
+27.	  Reg [6:0] dataCounter 	= 7’b000_0000;
+28.	  
+29.	  Reg readWrite			= 1’b0;
+30.	  Reg start 			= 0;
+31.	  Reg write_ack			= 0;
+32.	  
+33.	  Assign SDA = (write_ack == 1) ? 0 : ‘b1z;
+34.	  
+35.	  Always @(negedge SDA) begin
+36.	    If ((start == 0) && (SCL == 1)) 
+37.	    Begin
+38.			Start <= 1;
+39.	        addressCounter <= 0;
+40.	      	dataCounter <= 0;
+41.		End
+42.	  End
+43.	  
+44.	  Always @(posedge SDA) begin
+45.	    If (state == DATA_ACK && SCL == 1)
+46.	      Begin
+47.	        Start <= 0;
+48.			State <= READ_ADDRESS;
+49.		  End
+50.		End
+51.	  
+52.	  Always @(posedge SCL)
+53.	    Begin
+54.	    	If (start == 1)
+55.	    	Begin
+56.	    	  Case (state)
+57.	    	    READ_ADDRESS: 
+58.	    	      Begin
+59.	    	        Addr[addressCounter] <= SDA;
+60.	    	        addressCounter <= addressCounter + 1;
+61.	    	        If (addressCounter == 6) 
+62.	    	            Begin
+63.	     	             State <= READ_WRITE;
+64.	     	           End
+65.	     	     End
+66.	     	   READ_WRITE:
+67.	     	     Begin
+68.	                readWrite <= SDA;
+69.	              	State <= ADDRESS_ACK;
+70.	    	      End
+71.	            ADDRESS_ACK:
+72.	              Begin
+73.	                Write_ack <= 1;
+74.	                State <= DATA;
+75.	              End
+76.	            DATA:
+77.	              Begin
+78.	                Write_ack <= 0;
+79.	                
+80.	                Data[dataCounter] <= SDA;
+81.	    	        dataCounter <= dataCounter + 1;
+82.	                If (dataCounter == 8) 
+83.	    	            Begin
+84.	     	             State <= DATA_ACK;
+85.	                      Write_ack <= 1;
+86.	     	           End
+87.	              End
+88.	            DATA_ACK:
+89.	     	     Begin
+90.	               Write_ack <= 0;
+91.	               State <= STOP;
+92.	    	      End
+93.	            STOP:
+94.	              Begin
+95.	                Start <= 0;
+96.	                State <= READ_ADDRESS;
+97.	              End
+98.	    	  Endcase
+99.	    	End
+100.	    End
+101.	    
+102.	  
+103.	Endmodule
